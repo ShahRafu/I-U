@@ -3,19 +3,19 @@ package com.pikachu
 import android.util.Log
 
 /**
- * পিকাজু প্রোবাবিলিটি ট্রেডিং ইঞ্জিন (Probability Trading Engine)
+ * পিকাজু প্রোবাবিলিটি ট্রেডিং ইঞ্জিন (ProbabilityTradingEngine)
  * দশম শ্রেণির উচ্চতর গণিতের সম্ভাবনা (Chapter 14) এর লজিক অনুযায়ী 
- * ঐতিহাসিক ডেটার ভিত্তিতে অনুকূল ফলাফলের শতাংশ বা সম্ভাবনা হিসাব করে ট্রেড সিদ্ধান্ত নেয়।
+ * ঐতিহাসিক ডেটার ভিত্তিতে ৭৮% বা তার বেশি সম্ভাবনা নিশ্চিত হলে তবেই ট্রেড সিগন্যাল দেবে।
  */
 class ProbabilityTradingEngine {
 
     companion object {
         private const val TAG = "ProbabilityEngine"
-        private const val CONFIDENCE_THRESHOLD = 0.70 // ৭০% বা তার বেশি সম্ভাবনা হলে তবেই ট্রেড সিগন্যাল দেবে
+        private const val CONFIDENCE_THRESHOLD = 0.78 // ৭৮% বা তার বেশি সম্ভাবনা হলে তবেই ট্রেড নেবে
     }
 
     /**
-     * ঐতিহাসিক ডেটা এবং বর্তমান প্রাইস বিশ্লেষণ করে আপ বা ডাউনের সম্ভাব্যতা (Probability) বের করে।
+     * ঐতিহাসিক ডেটা এবং বর্তমান প্রাইস বিশ্লেষণ করে ৭৮%+ নিশ্চিত না হলে ট্রেড ব্লক করবে।
      * @param priceHistory পূর্বের দামগুলোর তালিকা (স্যাম্পল স্পেস)
      * @param currentPrice বর্তমান লাইভ প্রাইস
      * @return "UP", "DOWN" অথবা "HOLD"
@@ -46,8 +46,7 @@ class ProbabilityTradingEngine {
             downwardCount++
         }
 
-        // মোট ইভেন্ট বা ট্রায়াল সংখ্যা
-        val totalEvents = (totalPoints).toDouble()
+        val totalEvents = totalPoints.toDouble()
 
         // ২. সম্ভাবনার সূত্র প্রয়োগ: P(Event) = (অনুকূল ফলাফল / মোট সম্ভাব্য ফলাফল)
         val upProbability = upwardCount / totalEvents
@@ -55,15 +54,15 @@ class ProbabilityTradingEngine {
 
         Log.d(TAG, "Probability Analysis -> Up Prob: ${upProbability * 100}% | Down Prob: ${downProbability * 100}%")
 
-        // ৩. থ্রেশহোল্ড (নির্দিষ্ট সম্ভাবনা লেভেল) চেক করে ফাইনাল ডিসিশন নেওয়া
+        // ৩. কঠোর ৭৮% থ্রেশহোল্ড চেক
         return if (upProbability >= CONFIDENCE_THRESHOLD) {
-            Log.d(TAG, "Decision: UP (Probability met threshold: ${upProbability * 100}%)")
+            Log.d(TAG, "Decision: UP (78%+ Confidence met: ${upProbability * 100}%)")
             "UP"
         } else if (downProbability >= CONFIDENCE_THRESHOLD) {
-            Log.d(TAG, "Decision: DOWN (Probability met threshold: ${downProbability * 100}%)")
+            Log.d(TAG, "Decision: DOWN (78%+ Confidence met: ${downProbability * 100}%)")
             "DOWN"
         } else {
-            Log.d(TAG, "Decision: HOLD (Probability is below confidence threshold)")
+            Log.d(TAG, "Decision: HOLD (Probability is below 78%. No Trade Placed.)")
             "HOLD"
         }
     }
