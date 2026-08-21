@@ -17,6 +17,14 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // 🔻 C++ (CMake) বিল্ড কনফিগারেশন 🔻
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.18.1"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -40,6 +48,6 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     
-    // 🔻 ML Kit Text Recognition (অরিজিনাল ডিপেন্ডেন্সি) 🔻
+    // Google ML Kit Text Recognition
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
 }
