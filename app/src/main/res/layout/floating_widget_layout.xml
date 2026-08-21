@@ -2,18 +2,34 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="@drawable/floating_bg"
+    android:orientation="vertical"
     android:padding="8dp"
-    android:gravity="center"
-    android:orientation="vertical">
+    android:background="@android:color/transparent">
 
     <TextView
-        android:id="@+id/txtPercentage"
+        android:id="@+id/txtUpPercent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="HOLD"
-        android:textColor="#FFFFFF"
-        android:textSize="12sp"
-        android:textStyle="bold" />
+        android:text="UP: --%"
+        android:textColor="#00C853"
+        android:textStyle="bold"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/txtDownPercent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DOWN: --%"
+        android:textColor="#D50000"
+        android:textStyle="bold"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/txtCandlePercent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Candle: --%"
+        android:textColor="#2196F3"
+        android:textSize="12sp" />
 
 </LinearLayout>

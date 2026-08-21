@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.Pikachu.owner"
+    namespace = "com.pikachu"
     compileSdk = 35
 
     defaultConfig {
@@ -19,6 +19,19 @@ android {
         // NDK & C++ Architecture Filter
         ndk {
             abiFilters.addAll(setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        }
+    }
+
+    // Product flavors for Owner and User apps
+    flavorDimensions += "app"
+    productFlavors {
+        create("owner") {
+            dimension = "app"
+            applicationId = "com.pikachu.owner"
+        }
+        create("user") {
+            dimension = "app"
+            applicationId = "com.pikachu.user"
         }
     }
 
@@ -56,10 +69,10 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
 
-    // Kotlin Coroutines (ব্যাকগ্রাউন্ড থ্রেডিং ও মিলি-সেকেন্ড অটো-ট্যাপ ম্যানেজমেন্টের জন্য)
+    // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // Google ML Kit Text Recognition (অন-ডিভাইস OCR & টাইমার রিডার)
+    // Google ML Kit Text Recognition (on-device OCR)
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
 
     // Testing
