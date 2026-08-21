@@ -9,6 +9,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Pikachu">
 
+        <!-- 🔻 প্রধান লঞ্চার অ্যাক্টিভিটি (MainActivity) 🔻 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 🔻 অটো-ট্যাপ এক্সেসিবিলিটি সার্ভিস 🔻 -->
         <service
             android:name="com.Pikachu.owner.service.PikachuCoreService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
