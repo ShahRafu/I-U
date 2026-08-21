@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- প্রসেস চলার জন্য প্রয়োজনীয় পারমিশন -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Pikachu">
+
+        <!-- আপনার অ্যাক্টিভিটিসমূহ... -->
+
+        <!-- 🔻 এই জায়গায় সার্ভিসটি বসাবেন 🔻 -->
+        <service 
+            android:name="com.Pikachu.owner.service.ScreenCaptureService"
+            android:foregroundServiceType="mediaProjection"
+            android:enabled="true"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
