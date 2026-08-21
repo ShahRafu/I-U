@@ -1,0 +1,7 @@
+<!-- add inside <application> ... </application> -->
+<!-- Overlay display service (no auto-execute) -->
+<service
+    android:name=".OverlayDisplayService"
+    android:exported="false" />
+
+<!-- Note: SYSTEM_ALERT_WINDOW is a special permission requested at runtime via Settings -->
