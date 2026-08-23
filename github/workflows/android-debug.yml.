@@ -1,4 +1,4 @@
-name: Android CI - debug build
+name: Android CI - debug build (no wrapper)
 
 on:
   push:
@@ -10,9 +10,7 @@ on:
 
 jobs:
   build:
-    name: Build debug APK
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,7 +18,13 @@ jobs:
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
+          distribution: 'temurin'
           java-version: '11'
+
+      - name: Set up Gradle (install)
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: '8.5'
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -28,11 +32,13 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper/
-          key: ${{ runner.os }}-gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*','**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Build Debug APK (using installed gradle)
+        run: gradle assembleDebug --no-daemon
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1g"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
