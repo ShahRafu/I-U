@@ -18,11 +18,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: Export Java 17 Path
-        run: |
-          echo "JAVA_HOME=${{ env.JAVA_HOME_17_X64 }}" >> $GITHUB_ENV
-          echo "${{ env.JAVA_HOME_17_X64 }}/bin" >> $GITHUB_PATH
+          check-latest: true
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
