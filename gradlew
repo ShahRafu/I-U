@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 
-export JAVA_HOME=$JAVA_HOME_17_X64
+# Set JAVA_HOME if not already set
+if [ -z "$JAVA_HOME" ]; then
+    export JAVA_HOME=$JAVA_HOME_17_X64
+fi
 
 #
 # Copyright 2015 the original author or authors.
