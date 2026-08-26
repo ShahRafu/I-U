@@ -22,7 +22,7 @@ jobs:
       - run: chmod +x ./gradlew
       - run: ./gradlew :app:assembleOwnerDebug
       - run: ./gradlew :app:assembleUserDebug
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: APKs
           path: app/build/outputs/apk/
