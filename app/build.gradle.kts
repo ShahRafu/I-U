@@ -11,18 +11,16 @@ android {
         applicationId = "com.Pikachu.owner"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0-ProductionReady"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // NDK & C++ Architecture Filter
         ndk {
             abiFilters.addAll(setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
         }
     }
 
-    // Product flavors for Owner and User apps
     flavorDimensions += "app"
     productFlavors {
         create("owner") {
@@ -35,7 +33,6 @@ android {
         }
     }
 
-    // 🔻 C++ (CMake) বিল্ড কনফিগারেশন 🔻
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -64,7 +61,7 @@ android {
 }
 
 dependencies {
-    // AndroidX & UI Core Libraries
+    // AndroidX & UI
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -72,7 +69,15 @@ dependencies {
     // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // Google ML Kit Text Recognition (on-device OCR)
+    // Room Database (Trade History)
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    annotationProcessor("androidx.room:room-compiler:2.6.1")
+
+    // Gson (JSON Serialization)
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // ML Kit Text Recognition (OCR)
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
 
     // Testing
