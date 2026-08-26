@@ -26,10 +26,10 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build Owner APK
-        run: JAVA_HOME=$JAVA_HOME_17_X64 ./gradlew assembleOwnerDebug
+        run: ./gradlew assembleOwnerDebug
 
       - name: Build User APK
-        run: JAVA_HOME=$JAVA_HOME_17_X64 ./gradlew assembleUserDebug
+        run: ./gradlew assembleUserDebug
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
