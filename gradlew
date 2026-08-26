@@ -1,10 +1,5 @@
 #!/usr/bin/env sh
 
-# Set JAVA_HOME if not already set
-if [ -z "$JAVA_HOME" ]; then
-    export JAVA_HOME=$JAVA_HOME_17_X64
-fi
-
 #
 # Copyright 2015 the original author or authors.
 #
@@ -40,15 +35,15 @@ while [ -h "$PRG" ] ; do
         PRG=`dirname "$PRG"`"/$link"
     fi
 done
-SAVED="$(cd "$(dirname \"$PRG\")" >/dev/null 2>&1 && pwd)"
+SAVED="$(cd "$(dirname "$PRG")" >/dev/null 2>&1 && pwd)"
 
 # Standard file naming conventions for Gradle
-DEFAULT_JVM_OPTS='\" \"-Xmx64m\" \"-Xms64m\"'
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 APP_NAME="Gradle"
 APP_BASE_NAME=`basename "$0"`
 
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-export JAVA_OPTS="${JAVA_OPTS} -Xmx2048m"
+export JAVA_OPTS="${JAVA_OPTS:-} -Dorg.gradle.appname=$APP_BASE_NAME"
 
 # Use the maximum available, or set MAX_FD != maximum.
 MAX_FD="maximum"
@@ -57,27 +52,27 @@ MAX_FD="maximum"
 set -f
 set +e
 
-CLASSPATH=\"$SAVED/gradle/wrapper/gradle-wrapper.jar\"
+CLASSPATH=$SAVED/gradle/wrapper/gradle-wrapper.jar
 
-JAVA_EXE=\"$JAVA_HOME/bin/java\"
-if [ ! -x \"$JAVA_EXE\" ] ; then
+JAVA_EXE="$JAVA_HOME/bin/java"
+if [ ! -x "$JAVA_EXE" ] ; then
     JAVA_EXE=java
 fi
 
 if ! command -v java &> /dev/null
 then
-    echo \"ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.\"
-    echo \"\"
-    echo \"Please set the JAVA_HOME variable in your environment to match the\"
-    echo \"location of your Java installation.\"
+    echo "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."
+    echo ""
+    echo "Please set the JAVA_HOME variable in your environment to match the"
+    echo "location of your Java installation."
     exit 1
 fi
 
-if [ -z \"$JAVA_HOME\" ] ; then
-    echo \"WARNING: JAVA_HOME environment variable is not set.\"
+if [ -z "$JAVA_HOME" ] ; then
+    echo "WARNING: JAVA_HOME environment variable is not set."
 fi
 
 # Split the classpath into an array to handle spaces
-IFS=: read -ra CLASSPATH_ARRAY <<< \"$CLASSPATH\"
+IFS=: read -ra CLASSPATH_ARRAY <<< "$CLASSPATH"
 
-exec \"$JAVA_EXE\" \"-Dorg.gradle.appname=$APP_BASE_NAME\" \"-classpath\" \"$CLASSPATH\" org.gradle.wrapper.GradleWrapperMain \"$@\"
+exec "$JAVA_EXE" $DEFAULT_JVM_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
