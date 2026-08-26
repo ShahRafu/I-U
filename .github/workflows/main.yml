@@ -22,11 +22,14 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
       - name: Build Owner APK
-        run: gradle assembleOwnerDebug
+        run: JAVA_HOME=$JAVA_HOME_17_X64 ./gradlew assembleOwnerDebug
 
       - name: Build User APK
-        run: gradle assembleUserDebug
+        run: JAVA_HOME=$JAVA_HOME_17_X64 ./gradlew assembleUserDebug
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
