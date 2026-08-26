@@ -26,12 +26,12 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build Owner APK
-        run: ./gradlew assembleOwnerDebug --no-daemon
+        run: ./gradlew assembleOwnerDebug
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
 
       - name: Build User APK
-        run: ./gradlew assembleUserDebug --no-daemon
+        run: ./gradlew assembleUserDebug
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
 
