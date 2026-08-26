@@ -23,56 +23,167 @@
 ##############################################################################
 
 # Attempt to set APP_HOME
-# Resolve links: $0 may be a symlink
+# Resolve links: $0 may be a link
 PRG="$0"
 # Need this for relative symlinks.
 while [ -h "$PRG" ] ; do
     ls -ld "$PRG"
-    link=`expr "$PRG" : '.*->\(.*\)$'`
+    link=$(expr "$PRG" : '.*-> \(.*\)$')
     if expr "$link" : '/.*' > /dev/null; then
         PRG="$link"
     else
-        PRG=`dirname "$PRG"`"/$link"
+        PRG=$(dirname "$PRG")"/$link"
     fi
 done
-SAVED="$(cd "$(dirname "$PRG")" >/dev/null 2>&1 && pwd)"
+SAVED="$(cd "$(dirname "$PRG")" && pwd)"
+# When not using cygwin, set the basedir as it is
+# Otherwise the version includes the jdk/bin/java link
+if ! expr "$link" : '/cygdrive/.*' > /dev/null; then
+    APP_HOME="$SAVED"
+else
+    APP_HOME=$(cygpath --path --windows "$SAVED")
+fi
 
-# Standard file naming conventions for Gradle
-DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 APP_NAME="Gradle"
-APP_BASE_NAME=`basename "$0"`
+APP_BASE_NAME=$(basename "$0")
 
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-export JAVA_OPTS="${JAVA_OPTS:-} -Dorg.gradle.appname=$APP_BASE_NAME"
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
 # Use the maximum available, or set MAX_FD != maximum.
-MAX_FD="maximum"
+MAX_FD=maximum
 
-# Tell sh how to deal with all special characters (especially globbing) by using double quotes
-set -f
-set +e
+warn () {
+    echo "$*"
+} >&2
 
-CLASSPATH=$SAVED/gradle/wrapper/gradle-wrapper.jar
-
-JAVA_EXE="$JAVA_HOME/bin/java"
-if [ ! -x "$JAVA_EXE" ] ; then
-    JAVA_EXE=java
-fi
-
-if ! command -v java &> /dev/null
-then
-    echo "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."
-    echo ""
-    echo "Please set the JAVA_HOME variable in your environment to match the"
-    echo "location of your Java installation."
+die () {
+    echo
+    echo "$*"
+    echo
     exit 1
+} >&2
+
+# OS specific support (must be 'true' or 'false').
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "$( uname )" in
+  CYGWIN* )
+    cygwin=true
+    ;;
+  Darwin* )
+    darwin=true
+    ;;
+  MSYS* | MINGW* )
+    msys=true
+    ;;
+  NONSTOP* )
+    nonstop=true
+    ;;
+esac
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+
+# Determine the Java command to use to start the JVM.
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+        # IBM's JDK on AIX uses strange locations for the executables
+        JAVACMD="$JAVA_HOME/jre/sh/java"
+    else
+        JAVACMD="$JAVA_HOME/bin/java"
+    fi
+    if [ ! -x "$JAVACMD" ] ; then
+        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+else
+    JAVACMD="java"
+    if ! command -v java >/dev/null 2>&1
+    then
+        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
 fi
 
-if [ -z "$JAVA_HOME" ] ; then
-    echo "WARNING: JAVA_HOME environment variable is not set."
+# Increase the maximum file descriptors if we can.
+if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
+    case $MAX_FD in #(
+      max*)
+        # In POSIX sh, ulimit -H is undefined. That's why the result is checked a few lines below.
+        # shellcheck disable=SC3045
+        MAX_FD=$( ulimit -H -n ) ||
+            warn "Could not query maximum file descriptor limit"
+    esac
+    case $MAX_FD in  #(
+      '' | soft) :;; #(
+      *)
+        # In POSIX sh, ulimit -n is undefined. That's why the result is checked a few lines below.
+        # shellcheck disable=SC3045
+        ulimit -n "$MAX_FD" ||
+            warn "Could not set maximum file descriptor limit to $MAX_FD"
+    esac
 fi
 
-# Split the classpath into an array to handle spaces
-IFS=: read -ra CLASSPATH_ARRAY <<< "$CLASSPATH"
+# Collect all arguments for the java command, stacking in reverse order:
+#   * args from the command line
+#   * the main class name
+#   * -classpath
+#   * -D...appname settings
+#   * --module-path (only if needed)
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and GRADLE_OPTS environment variables.
 
-exec "$JAVA_EXE" $DEFAULT_JVM_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+# For Cygwin or MSYS, switch paths to Windows format before running java
+if "$cygwin" || "$msys" ; then
+    APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
+    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
+
+    JAVACMD=$( cygpath --path --mixed "$JAVACMD" )
+
+    # We build the pattern for arguments to be converted via cygpath
+    ROOTDIRSRAW=$(find -L / -maxdepth 3 -type d -name java >/dev/null 2>&1 && echo "yes" || echo "no")
+    if [ "$ROOTDIRSRAW" != "no" ] ; then
+        # Using find will follow symlinks into directories matching the pattern
+        ROOTDIRS=$( find -L / -maxdepth 3 -type d -name java >/dev/null 2>&1 | head -n 1 )
+    fi
+    if [ -z "$ROOTDIRS" ] ; then
+        ROOTDIRS=$(jrunscript -e 'java.lang.System.getProperty("java.class.path").split(File.pathSeparator).forEach(function(path) { if (path.toLowerCase().indexOf("jdk") > -1) println(path.split("jdk")[0]); });' 2>/dev/null)
+    fi
+fi
+
+if [ -z "$JAVA_HOME" ] && [ -L /usr/libexec/java_home ]; then
+    # macOS location of Java_HOME
+    export JAVA_HOME=$(/usr/libexec/java_home)
+fi
+
+# For Darwin, add options to specify how the application appears in the dock
+if "$darwin"; then
+    DEFAULT_JVM_OPTS='"-Xdock:name=$APP_NAME" "-Xdock:icon=$APP_HOME/media/dock.icns" '"$DEFAULT_JVM_OPTS"'"'
+fi
+
+# Set up the command line for launching the application and build the environment.
+set -- \
+        "-Dorg.gradle.appname=$APP_BASE_NAME" \
+        -classpath "$CLASSPATH" \
+        org.gradle.wrapper.GradleWrapperMain \
+        "$@"
+
+# Stop when "xargs" by default outputs spaces, it needs quotes to not misinterpret
+# any paths. The string of find will be processed as is.
+#     In particular, spaces and wildcards will not be expanded.
+# Use "xargs -0" by default to protect against misinterpretation of backslashes.
+# Requires findutils 4.4.0 or later.
+find . \( -name '\#*#' -o -name '*~' -o -name '.#*' \) -delete >/dev/null 2>&1 || true
+
+# Use "xargs -0" by default to protect against misinterpretation of backslashes.
+export -p | grep -E '^export [a-zA-Z_][a-zA-Z0-9_]*=' >/dev/null 2>&1 && \
+    eval "set -- $(printf '\0%s\n' "$@" | xargs -0 printf '%s ')" || \
+    set -- "$@"
+
+exec "$JAVACMD" "$@"
