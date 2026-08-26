@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+export JAVA_HOME=$JAVA_HOME_17_X64
+
 #
 # Copyright 2015 the original author or authors.
 #
