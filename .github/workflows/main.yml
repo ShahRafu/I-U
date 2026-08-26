@@ -10,10 +10,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      JAVA_HOME: ${{ steps.setup-java.outputs.path }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 17
+        id: setup-java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -27,9 +30,13 @@ jobs:
 
       - name: Build Owner APK
         run: ./gradlew assembleOwnerDebug
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.path }}
 
       - name: Build User APK
         run: ./gradlew assembleUserDebug
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.path }}
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
