@@ -1,1 +1,2 @@
+# Ensure gradlew keeps LF line endings to avoid shell parsing issues
 gradlew text eol=lf
