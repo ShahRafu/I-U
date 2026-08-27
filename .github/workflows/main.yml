@@ -8,12 +8,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,12 +42,16 @@ jobs:
             echo "sdkmanager not found under ANDROID_SDK_ROOT ($ANDROID_SDK_ROOT)" >&2
             exit 1
           fi
+
+          echo "Accepting licenses..."
           yes | "$SDKMANAGER" --sdk_root="${ANDROID_SDK_ROOT}" --licenses >/dev/null || true
+
+          echo "Installing required components: cmake;3.18.1, ndk;25.1.8937393, build-tools;33.0.1, platforms;android-33"
           "$SDKMANAGER" --sdk_root="${ANDROID_SDK_ROOT}" "cmake;3.18.1" "ndk;25.1.8937393" "build-tools;33.0.1" "platforms;android-33"
 
       - name: Ensure gradle wrapper JAR & gradlew script are usable
         run: |
-          echo "Listing wrapper dir:"
+          echo "=== Listing wrapper folders ==="
           ls -la gradle || true
           ls -la gradle/wrapper || true
 
@@ -54,17 +59,16 @@ jobs:
             echo "Found gradle-wrapper.jar — fixing permissions"
             chmod a+r gradle/wrapper/gradle-wrapper.jar || true
             stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradle/wrapper/gradle-wrapper.jar || true
+            file gradle/wrapper/gradle-wrapper.jar || true
           else
             echo "gradle-wrapper.jar NOT FOUND at gradle/wrapper/gradle-wrapper.jar"
           fi
 
           if [ -f gradlew ]; then
             echo "Normalizing gradlew line endings and making executable"
-            # remove Windows CRLF if present
             sed -i 's/\r$//' gradlew || true
             chmod +x gradlew || true
-            echo "gradlew head:"
-            head -n 20 gradlew || true
+            head -n 12 gradlew || true
           else
             echo "gradlew script not found"
           fi
@@ -75,15 +79,13 @@ jobs:
         run: |
           set -x
           ./gradlew assembleOwnerDebug --no-daemon
-          echo "WRAPPER_EXIT=$?" > wrapper_exit.txt
         shell: bash
 
       - name: Fallback: run Gradle by invoking wrapper main via java if wrapper failed
         if: failure() || steps.run-wrapper.outcome == 'failure'
         run: |
-          echo "Wrapper run failed — attempting direct Java invocation of Gradle Wrapper Main"
+          echo "Wrapper failed — attempting direct Java invocation of Gradle Wrapper Main"
           if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
-            # Prefer java from JAVA_HOME if available
             if [ -n "${JAVA_HOME}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
               JAVA_CMD="${JAVA_HOME}/bin/java"
             else
@@ -94,8 +96,6 @@ jobs:
               exit 2
             fi
             echo "Using java: $JAVA_CMD"
-            # Use -cp with wrapper jar and invoke GradleWrapperMain
-            # Pass through the same task name and flags
             "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain assembleOwnerDebug --no-daemon
           else
             echo "gradle-wrapper.jar missing — cannot run direct java invocation" >&2
