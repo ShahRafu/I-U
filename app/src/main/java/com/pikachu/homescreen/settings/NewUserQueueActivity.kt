@@ -1,4 +1,4 @@
-package com.pikachu.home.settings
+package com.pikachu.homescreen.settings
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -30,7 +30,7 @@ class NewUserQueueActivity : AppCompatActivity() {
             val nickname = etNickname.text.toString().trim()
             if (nickname.isNotEmpty()) {
                 sharedPreferences.edit().putString("USER_CUSTOM_NICKNAME", nickname).apply()
-                Toast.makeText(this, "কাস্টম নিকনেম সফলভাবে সেভ হয়েছে!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "কাস্টম নিকনেম সফলভাবে সেভ হয়েছে!", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "নিকনেম খালি রাখা যাবে না", Toast.LENGTH_SHORT).show()
             }
