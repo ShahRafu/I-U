@@ -13,6 +13,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,38 +27,69 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Ensure gradle wrapper JAR & gradlew script are usable
+      - name: Pre-check: normalize gradlew, fix wrapper jar perms
         run: |
-          echo "Checking gradle wrapper..."
+          echo "=== Inspecting files ==="
           ls -la gradle || true
           ls -la gradle/wrapper || true
+
           if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Found gradle-wrapper.jar — fixing perms"
+            echo "Fixing gradle-wrapper.jar permissions"
             chmod a+r gradle/wrapper/gradle-wrapper.jar || true
+            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradle/wrapper/gradle-wrapper.jar || true
           else
-            echo "gradle-wrapper.jar NOT FOUND (you may need to add it or run add-wrapper workflow)"
+            echo "WARNING: gradle/wrapper/gradle-wrapper.jar not found"
           fi
+
           if [ -f gradlew ]; then
-            # normalize line endings and ensure executable
-            sed -i 's/\r$//' gradlew || true
+            echo "Normalizing gradlew line endings and making executable"
+            # remove Windows CR if present
+            if command -v dos2unix >/dev/null 2>&1; then
+              dos2unix gradlew || true
+            else
+              sed -i 's/\r$//' gradlew || true
+            fi
             chmod +x gradlew || true
-          fi
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.5'
-
-      - name: Build Debug APK (uses Gradle wrapper if available)
-        run: |
-          if [ -x ./gradlew ]; then
-            ./gradlew assembleDebug --no-daemon
+            echo "gradlew stat:"
+            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradlew || true
+            echo "gradlew head:"
+            sed -n '1,20p' gradlew || true
           else
-            # fallback to system gradle if wrapper not executable
-            gradle assembleDebug --no-daemon
+            echo "gradlew script not found"
           fi
+
+      - name: Try build via Gradle wrapper (bash -x)
+        id: run-wrapper
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -x
+          # run with bash explicitly to avoid /bin/sh (dash) parsing differences
+          bash -x ./gradlew assembleDebug --no-daemon
+
+      - name: Fallback: invoke wrapper main via java (if wrapper failed)
+        if: failure() || steps.run-wrapper.outcome == 'failure'
+        run: |
+          echo "Wrapper failed — trying direct java invocation"
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "gradle-wrapper.jar missing — aborting" >&2
+            ls -la gradle/wrapper || true
+            exit 2
+          fi
+          if [ -n "${JAVA_HOME}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
+            JAVA_CMD="${JAVA_HOME}/bin/java"
+          else
+            JAVA_CMD="$(which java || true)"
+          fi
+          if [ -z "$JAVA_CMD" ]; then
+            echo "java not found" >&2
+            exit 3
+          fi
+          echo "Using java: $JAVA_CMD"
+          "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain assembleDebug --no-daemon
 
       - name: Upload APKs
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: APKs
