@@ -36,7 +36,6 @@ jobs:
           mkdir -p gradle/wrapper
           tmpzip="gradle-dist.zip"
           curl -fsSL -o "$tmpzip" "${{ steps.dist.outputs.DIST_URL }}"
-          # Try to find the wrapper jar path inside zip (gradle-*/lib/gradle-wrapper.jar)
           jarpath=$(unzip -l "$tmpzip" | awk '{print $4}' | grep -E '/lib/gradle-wrapper.jar$' | head -n1)
           if [ -z "$jarpath" ]; then
             echo "Could not find gradle-wrapper.jar inside distribution zip" >&2
