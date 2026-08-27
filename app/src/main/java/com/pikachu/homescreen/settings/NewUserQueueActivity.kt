@@ -9,7 +9,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.pikachu.R
 
-class CustomNicknameActivity : AppCompatActivity() {
+class NewUserQueueActivity : AppCompatActivity() {
 
     private lateinit var etNickname: EditText
     private lateinit var btnSaveNickname: Button
@@ -23,7 +23,6 @@ class CustomNicknameActivity : AppCompatActivity() {
         btnSaveNickname = findViewById(R.id.btnSaveNickname)
         sharedPreferences = getSharedPreferences("PikachuOwnerPrefs", Context.MODE_PRIVATE)
 
-        // পূর্বে সেভ করা নিকনেম লোড করা
         val currentNickname = sharedPreferences.getString("USER_CUSTOM_NICKNAME", "MyDevice")
         etNickname.setText(currentNickname)
 
