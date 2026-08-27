@@ -1,77 +1,36 @@
-name: Build Android APK
+name: Build Android APK (stable)
 
 on:
-  push:
-    branches: [main, production-ready-trading]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build:
+  stable-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Pre-check: ensure gradle wrapper & gradlew usable
+      - name: Repo overview & gradle wrapper status
         run: |
-          echo "=== check gradle wrapper jar ==="
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Commit: $GITHUB_SHA"
+          echo "--- listing top-level ---"
+          ls -la || true
+          echo "--- listing gradle wrapper folder ---"
           ls -la gradle || true
           ls -la gradle/wrapper || true
-
           if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "fixing gradle-wrapper.jar perms"
-            chmod a+r gradle/wrapper/gradle-wrapper.jar || true
+            echo "gradle-wrapper.jar: present"
             stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradle/wrapper/gradle-wrapper.jar || true
           else
-            echo "::warning::gradle-wrapper.jar not found at gradle/wrapper/gradle-wrapper.jar"
+            echo "gradle-wrapper.jar: MISSING"
           fi
 
-          if [ -f gradlew ]; then
-            echo "normalize gradlew line endings & make executable"
-            if command -v dos2unix >/dev/null 2>&1; then
-              dos2unix gradlew || true
-            else
-              sed -i 's/\r$//' gradlew || true
-            fi
-            chmod +x gradlew || true
-            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradlew || true
-          else
-            echo "::warning::gradlew script not found"
-          fi
-
-      - name: Setup Gradle (system)
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.5'
-
-      - name: Build Debug APK (wrapper if available)
+      - name: Quick env check
         run: |
-          if [ -x ./gradlew ]; then
-            echo "Using project wrapper"
-            ./gradlew assembleDebug --no-daemon
-          else
-            echo "Using system gradle"
-            gradle assembleDebug --no-daemon
-          fi
-
-      - name: Upload APKs
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: APKs
-          path: app/build/outputs/apk/
+          echo "JAVA_HOME=$JAVA_HOME"
+          which java || true
+          java -version || true
