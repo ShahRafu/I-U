@@ -21,12 +21,10 @@ class RegistrationActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // SharedPreferences দিয়ে চেক করা ইউজার ইতিমধ্যে ভেরিফাই করা কি না
+
         sharedPreferences = getSharedPreferences("PikachuUserPrefs", Context.MODE_PRIVATE)
         val isVerified = sharedPreferences.getBoolean("IS_VERIFIED", false)
 
-        // যদি ইতিমধ্যে ভেরিফাই করা থাকে, তবে সরাসরি হোমস্ক্রিনে পাঠিয়ে দিবে
         if (isVerified) {
             startActivity(Intent(this, UserHomeActivity::class.java))
             finish()
@@ -45,47 +43,42 @@ class RegistrationActivity : AppCompatActivity() {
             val initialPin = etInitialPin.text.toString().trim()
             val verificationCode = etVerificationCode.text.toString().trim()
 
-            // ১. নাম চেক
             if (name.isEmpty()) {
                 etUserName.error = "নাম দিতে হবে"
                 etUserName.requestFocus()
                 return@setOnClickListener
             }
 
-            // ২. ৬ অক্ষরের পিন চেক
             if (initialPin.length != 6) {
                 etInitialPin.error = "পিন অবশ্যই ৬ অক্ষরের হতে হবে"
                 etInitialPin.requestFocus()
                 return@setOnClickListener
             }
 
-            // ৩. ৮ অক্ষরের ইউনিক কোড ফরম্যাট ও রুল ভ্যালিডেশন
             if (!isValidUniqueCode(verificationCode)) {
                 Toast.makeText(
-                    this, 
-                    "কোড ভুল! ৮ অক্ষরে ৩টি অক্ষর (বড় ও ছোট হাতের মিশ্রিত), ৩টি সংখ্যা এবং ২টি স্পেশাল ক্যারেক্টার থাকতে হবে।", 
-                    Toast.MAX_LENGTH
+                    this,
+                    "কোড ভুল! সঠিক ফরম্যাট দিন (৮ অক্ষর)।",
+                    Toast.LENGTH_LONG
                 ).show()
                 etVerificationCode.error = "সঠিক কোড দিন"
                 etVerificationCode.requestFocus()
                 return@setOnClickListener
             }
 
-            // সব ঠিক থাকলে ভেরিফিকেশন সফল হিসেবে সেভ করে হোমস্ক্রিনে প্রবেশ করবে
             val editor = sharedPreferences.edit()
             editor.putBoolean("IS_VERIFIED", true)
             editor.putString("USER_NAME", name)
             editor.apply()
 
             Toast.makeText(this, "ভেরিফিকেশন সফল হয়েছে!", Toast.LENGTH_SHORT).show()
-            
+
             val intent = Intent(this, UserHomeActivity::class.java)
             startActivity(intent)
             finish()
         }
     }
 
-    // নিখুঁত ৮ অক্ষরের পাসওয়ার্ড রুল চেকার (৩ অক্ষর মিক্সড, ৩ সংখ্যা, ২ স্পেশাল)
     private fun isValidUniqueCode(code: String): Boolean {
         if (code.length != 8) return false
 
@@ -114,7 +107,6 @@ class RegistrationActivity : AppCompatActivity() {
             }
         }
 
-        // শর্ত যাচাই: ৩টি অক্ষর (কমপক্ষে ১টি বড় ও ১টি ছোট), ৩টি সংখ্যা, ২টি স্পেশাল ক্যারেক্টার
         val isLetterValid = letterCount == 3 && upperCount > 0 && lowerCount > 0
         val isDigitValid = digitCount == 3
         val isSpecialValid = specialCount == 2
