@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Checkout repository
@@ -42,65 +42,91 @@ jobs:
             echo "sdkmanager not found under ANDROID_SDK_ROOT ($ANDROID_SDK_ROOT)" >&2
             exit 1
           fi
-
-          echo "Accepting licenses..."
           yes | "$SDKMANAGER" --sdk_root="${ANDROID_SDK_ROOT}" --licenses >/dev/null || true
-
-          echo "Installing required components: cmake;3.18.1, ndk;25.1.8937393, build-tools;33.0.1, platforms;android-33"
           "$SDKMANAGER" --sdk_root="${ANDROID_SDK_ROOT}" "cmake;3.18.1" "ndk;25.1.8937393" "build-tools;33.0.1" "platforms;android-33"
 
-      - name: Ensure gradle wrapper JAR & gradlew script are usable
+      - name: Ensure gradle wrapper JAR & gradlew script are usable (debug)
         run: |
-          echo "=== Listing wrapper folders ==="
+          echo "=== print java info ==="
+          echo "JAVA_HOME=$JAVA_HOME"
+          which java || true
+          java -version || true
+
+          echo "=== listing wrapper folder ==="
           ls -la gradle || true
           ls -la gradle/wrapper || true
 
+          echo "=== inspect gradle-wrapper.jar ==="
           if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Found gradle-wrapper.jar — fixing permissions"
-            chmod a+r gradle/wrapper/gradle-wrapper.jar || true
             stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradle/wrapper/gradle-wrapper.jar || true
-            file gradle/wrapper/gradle-wrapper.jar || true
+            ls -l --full-time gradle/wrapper/gradle-wrapper.jar || true
+            # ensure readable, and also give execute bit in case script tries to exec it by mistake
+            chmod a+r gradle/wrapper/gradle-wrapper.jar || true
+            chmod a+x gradle/wrapper/gradle-wrapper.jar || true
+            # test reading it with java - show jar manifest entries
+            if command -v java >/dev/null 2>&1; then
+              echo "Testing java can read the wrapper jar (show manifest):"
+              java -jar gradle/wrapper/gradle-wrapper.jar 2>/dev/null || true
+              # alternatively show JAR file header
+              hexdump -C gradle/wrapper/gradle-wrapper.jar | head -n 4 || true
+            fi
           else
-            echo "gradle-wrapper.jar NOT FOUND at gradle/wrapper/gradle-wrapper.jar"
+            echo "gradle-wrapper.jar NOT FOUND"
           fi
 
+          echo "=== inspect gradlew script ==="
           if [ -f gradlew ]; then
-            echo "Normalizing gradlew line endings and making executable"
-            sed -i 's/\r$//' gradlew || true
+            echo "stat for gradlew:"
+            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradlew || true
+            echo "First lines of gradlew:"
+            sed -n '1,40p' gradlew || true
+            # Normalize line endings
+            if command -v dos2unix >/dev/null 2>&1; then
+              dos2unix gradlew || true
+            else
+              sed -i 's/\r$//' gradlew || true
+            fi
             chmod +x gradlew || true
-            head -n 12 gradlew || true
+            echo "After normalization stat:"
+            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradlew || true
           else
-            echo "gradlew script not found"
+            echo "gradlew not found"
           fi
 
-      - name: Try running Gradle via wrapper (preferred)
+      - name: Try running Gradle via wrapper (bash -x for debug)
         id: run-wrapper
         continue-on-error: true
+        shell: bash
         run: |
           set -x
-          ./gradlew assembleOwnerDebug --no-daemon
-        shell: bash
+          # Run via bash explicitly (not /bin/sh) so we avoid dash parsing differences
+          bash -x ./gradlew assembleOwnerDebug --no-daemon
 
-      - name: Fallback: run Gradle by invoking wrapper main via java if wrapper failed
+      - name: Fallback: direct Java invocation of Gradle Wrapper Main (if wrapper failed)
         if: failure() || steps.run-wrapper.outcome == 'failure'
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
         run: |
-          echo "Wrapper failed — attempting direct Java invocation of Gradle Wrapper Main"
-          if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
-            if [ -n "${JAVA_HOME}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
-              JAVA_CMD="${JAVA_HOME}/bin/java"
-            else
-              JAVA_CMD="$(which java || true)"
-            fi
-            if [ -z "$JAVA_CMD" ]; then
-              echo "java not found on PATH and JAVA_HOME not set correctly" >&2
-              exit 2
-            fi
-            echo "Using java: $JAVA_CMD"
-            "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain assembleOwnerDebug --no-daemon
+          echo "Wrapper failed — trying direct java invocation"
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "gradle-wrapper.jar missing — aborting" >&2
+            ls -la gradle/wrapper || true
+            exit 2
+          fi
+          if [ -n "${JAVA_HOME}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
+            JAVA_CMD="${JAVA_HOME}/bin/java"
           else
-            echo "gradle-wrapper.jar missing — cannot run direct java invocation" >&2
+            JAVA_CMD="$(which java || true)"
+          fi
+          if [ -z "$JAVA_CMD" ]; then
+            echo "java not found" >&2
             exit 3
           fi
+          echo "Using java: $JAVA_CMD"
+          # show that java can load the class
+          "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain --version || true
+          # Now run the requested task
+          "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain assembleOwnerDebug --no-daemon
 
       - name: Build User APK (run only if Owner build succeeded)
         if: success()
