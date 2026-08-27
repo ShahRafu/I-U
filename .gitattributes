@@ -1,1 +1,2 @@
+gradle/wrapper/*.jar binary
 gradlew text eol=lf
