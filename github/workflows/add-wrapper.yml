@@ -1,0 +1,74 @@
+name: Generate and add Gradle wrapper JAR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  add-wrapper-jar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Read distributionUrl from gradle-wrapper.properties (fallback to 8.5)
+        id: dist
+        run: |
+          if [ -f gradle/wrapper/gradle-wrapper.properties ]; then
+            url=$(grep -E '^distributionUrl=' gradle/wrapper/gradle-wrapper.properties | cut -d'=' -f2-)
+            echo "DIST_URL=${url:-https://services.gradle.org/distributions/gradle-8.5-bin.zip}" >> $GITHUB_OUTPUT
+          else
+            echo "DIST_URL=https://services.gradle.org/distributions/gradle-8.5-bin.zip" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download Gradle distribution and extract gradle-wrapper.jar
+        run: |
+          echo "Using distribution URL: ${{ steps.dist.outputs.DIST_URL }}"
+          mkdir -p gradle/wrapper
+          tmpzip="gradle-dist.zip"
+          curl -fsSL -o "$tmpzip" "${{ steps.dist.outputs.DIST_URL }}"
+          jarpath=$(unzip -l "$tmpzip" | awk '{print $4}' | grep -E '/lib/gradle-wrapper.jar$' | head -n1)
+          if [ -z "$jarpath" ]; then
+            echo "Could not find gradle-wrapper.jar inside distribution zip" >&2
+            exit 1
+          fi
+          unzip -j "$tmpzip" "$jarpath" -d gradle/wrapper
+          rm -f "$tmpzip"
+          ls -la gradle/wrapper || true
+
+      - name: Commit and push added wrapper jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add -A gradle gradlew gradlew.bat || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: add gradle-wrapper.jar (fetched from distribution)"
+            git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:refs/heads/add-gradle-wrapper
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Create PR if missing
+        if: ${{ always() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_EXISTS=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:add-gradle-wrapper&base=main" | jq 'length')
+          if [ "$PR_EXISTS" = "0" ]; then
+            curl -s -X POST -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls" \
+              -d "$(jq -n --arg t "Add Gradle wrapper JAR" --arg b "This PR adds gradle-wrapper.jar (extracted from distribution) so CI can use the project wrapper." '{title:$t, head:"add-gradle-wrapper", base:"main", body:$b}')"
+            echo "PR created"
+          else
+            echo "PR already exists"
+          fi
