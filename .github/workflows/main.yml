@@ -2,7 +2,7 @@ name: Build Android APKs (owner + user)
 
 on:
   push:
-    branches: [main]
+    branches: [main, production-ready-trading]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -13,7 +13,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,7 +30,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install required Android SDK components
+      - name: Install required Android SDK components (CMake, NDK, build-tools, platforms)
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
         run: |
@@ -41,37 +42,79 @@ jobs:
             echo "sdkmanager not found under ANDROID_SDK_ROOT ($ANDROID_SDK_ROOT)" >&2
             exit 1
           fi
+          echo "Accepting licenses..."
           yes | "$SDKMANAGER" --sdk_root="${ANDROID_SDK_ROOT}" --licenses >/dev/null || true
+          echo "Installing required components: cmake;3.18.1, ndk;25.1.8937393, build-tools;33.0.1, platforms;android-33"
           "$SDKMANAGER" --sdk_root="${ANDROID_SDK_ROOT}" "cmake;3.18.1" "ndk;25.1.8937393" "build-tools;33.0.1" "platforms;android-33"
 
-      - name: Ensure gradlew and wrapper jar usable
+      - name: Ensure gradle wrapper JAR & gradlew script are usable
         run: |
+          echo "=== listing wrapper folders ==="
+          ls -la gradle || true
+          ls -la gradle/wrapper || true
+
           if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "Found gradle-wrapper.jar — fixing permissions"
             chmod a+r gradle/wrapper/gradle-wrapper.jar || true
+            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradle/wrapper/gradle-wrapper.jar || true
           else
-            echo "::warning:: gradle/wrapper/gradle-wrapper.jar not found"
+            echo "::warning::gradle-wrapper.jar NOT FOUND at gradle/wrapper/gradle-wrapper.jar"
           fi
+
           if [ -f gradlew ]; then
-            sed -i 's/\r$//' gradlew || true
+            echo "Normalizing gradlew line endings and making executable"
+            if command -v dos2unix >/dev/null 2>&1; then
+              dos2unix gradlew || true
+            else
+              sed -i 's/\r$//' gradlew || true
+            fi
             chmod +x gradlew || true
+            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradlew || true
+          else
+            echo "::warning::gradlew script not found"
           fi
 
-      - name: Build owner & user debug APKs (explicit tasks)
-        run: |
-          set -e
-          echo "Building :app:assembleUserDebug"
-          ./gradlew :app:assembleUserDebug --no-daemon || { echo "::error::assembleUserDebug failed"; exit 1; }
-          echo "Building :app:assembleOwnerDebug"
-          ./gradlew :app:assembleOwnerDebug --no-daemon || { echo "::error::assembleOwnerDebug failed"; exit 1; }
+      - name: Setup Gradle (system fallback)
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
 
-      - name: List build outputs (for debugging)
+      - name: Build owner & user debug APKs (direct java wrapper invocation)
+        run: |
+          set -euo pipefail
+          # Prefer running wrapper via java to avoid gradlew shell parsing issues
+          if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
+            if [ -n "${JAVA_HOME:-}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
+              JAVA_CMD="${JAVA_HOME}/bin/java"
+            else
+              JAVA_CMD="$(which java || true)"
+            fi
+            if [ -z "$JAVA_CMD" ]; then
+              echo "::error::Java not found"
+              exit 2
+            fi
+            echo "Using java: $JAVA_CMD (direct wrapper jar invocation)"
+
+            echo ">>> Running :app:assembleUserDebug"
+            "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain :app:assembleUserDebug --no-daemon || { echo "::error::assembleUserDebug failed"; exit 1; }
+
+            echo ">>> Running :app:assembleOwnerDebug"
+            "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain :app:assembleOwnerDebug --no-daemon || { echo "::error::assembleOwnerDebug failed"; exit 1; }
+
+          else
+            echo "::warning::gradle-wrapper.jar missing — falling back to system gradle (if available)"
+            gradle :app:assembleUserDebug --no-daemon || { echo "::error::assembleUserDebug failed (system gradle)"; exit 1; }
+            gradle :app:assembleOwnerDebug --no-daemon || { echo "::error::assembleOwnerDebug failed (system gradle)"; exit 1; }
+          fi
+
+      - name: List build outputs (debug)
         run: |
           echo "==== app/build/outputs listing ===="
           ls -R app/build/outputs || true
           echo "==== find all apk files ===="
           find app/build/outputs -type f -name "*.apk" -print || true
 
-      - name: Upload owner & user APKs (and any debug apks)
+      - name: Upload owner & user APKs and any debug APKs
         uses: actions/upload-artifact@v4
         with:
           name: APKs
