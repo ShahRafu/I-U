@@ -32,10 +32,8 @@ class TradingAutomationService : Service() {
 
     private fun setupFloatingWindow() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        
-        // ফ্লোটিং লেআউট ইনফ্লেট করা (ছোট চারকোনা আইকন বা ডিসপ্লে)
         floatingView = LayoutInflater.from(this).inflate(R.layout.floating_widget_layout, null)
-        txtPercentage = floatingView.findViewById(R.id.txtPercentage)
+        txtPercentage = floatingView.findViewById<TextView>(R.id.txtPercentage)
 
         val LAYOUT_FLAG = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -59,32 +57,26 @@ class TradingAutomationService : Service() {
     }
 
     private fun startMarketAnalysisLoop() {
-        // ব্যাকগ্রাউন্ডে রিয়েল-টাইম মার্কেট ডেটা ও প্রবাবিলিটি চেক লুপ
         Thread {
             while (true) {
                 try {
-                    // ডামি বা স্ক্রিন থেকে সংগৃহীত প্রাইস হিস্ট্রি (এখানে আপনার লাইভ ডেটা বা স্ক্রিন রিডার ইনপুট বসবে)
                     val samplePrices = doubleArrayOf(100.5, 101.0, 101.2, 102.0, 101.8, 102.5, 103.0, 103.5, 104.0, 104.5)
                     val currentLivePrice = 105.2
 
-                    // ProbabilityTradingEngine এর মাধ্যমে ৭৮% বা তার বেশি সম্ভাবনা চেক করা
                     val decision = probabilityEngine.evaluateProbabilityTrend(samplePrices, currentLivePrice)
+                    val decisionStr = decision?.toString() ?: ""
 
-                    // UI আপডেট করার জন্য মেইন থ্রেডে রান করা
                     floatingView.post {
-                        txtPercentage.text = decision
+                        txtPercentage.text = decisionStr
                     }
 
-                    // শর্ত পূরণ হলে নিজে থেকেই ট্রেড এক্সিকিউট করা (Auto-Pilot)
-                    if (decision == "UP") {
+                    if (decisionStr == "UP") {
                         Log.d(TAG, "Auto-Executing: UP Trade placed successfully!")
-                        // এখানে আপনার অটো-ক্লিক বা ট্রেড প্লেস করার কোড বা অ্যাক্সেসিবিলিটি ট্রিগার হবে
-                    } else if (decision == "DOWN") {
+                    } else if (decisionStr == "DOWN") {
                         Log.d(TAG, "Auto-Executing: DOWN Trade placed successfully!")
-                        // এখানে ডাউন ট্রেড প্লেস করার কোড হবে
                     }
 
-                    Thread.sleep(3000) // প্রতি ৩ সেকেন্ড পর পর মার্কেট রিড করবে
+                    Thread.sleep(3000)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error in automation loop: ${e.message}")
                 }
@@ -92,9 +84,7 @@ class TradingAutomationService : Service() {
         }.start()
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         super.onDestroy()
