@@ -69,16 +69,20 @@ class MainActivity : AppCompatActivity() {
         context: Context,
         serviceClass: Class<*>
     ): Boolean {
-        val accessibilityManager =
-            context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+        return try {
+            val accessibilityManager =
+                context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
 
-        val componentName = ComponentName(context, serviceClass)
-        val enabledServices = accessibilityManager.getEnabledAccessibilityServiceList(
-            AccessibilityManager.FEEDBACK_ALL_MASKS
-        )
+            val componentName = ComponentName(context, serviceClass)
+            val enabledServices = accessibilityManager.getEnabledAccessibilityServiceList(
+                AccessibilityManager.FEEDBACK_ALL_MASKS
+            )
 
-        return enabledServices.any { service ->
-            service.componentName == componentName
+            enabledServices.any { service ->
+                service.componentName == componentName
+            }
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -109,11 +113,14 @@ class MainActivity : AppCompatActivity() {
      */
     private fun navigateToOwnerHome() {
         try {
-            val homeIntent = Intent(this, OwnerHomeActivity::class.java)
+            // স্পষ্টভাবে পাথ দিন অথবা চেষ্টা করুন
+            val homeIntent = Intent()
+            homeIntent.setClass(this, Class.forName("com.pikachu.owner.OwnerHomeActivity"))
             startActivity(homeIntent)
             finish() // MainActivity বন্ধ করা
         } catch (e: Exception) {
-            Toast.makeText(this, "Error: OwnerHomeActivity not found", Toast.LENGTH_SHORT).show()
+            // যদি ওনার অ্যাক্টিভিটি না পাওয়া যায়, টোস্ট দিন
+            Toast.makeText(this, "OwnerHomeActivity not available", Toast.LENGTH_SHORT).show()
         }
     }
 }
