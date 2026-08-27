@@ -30,7 +30,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install required Android SDK components (CMake, NDK, build-tools, platforms)
+      - name: Install required Android SDK components
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
         run: |
@@ -42,67 +42,92 @@ jobs:
             echo "sdkmanager not found under ANDROID_SDK_ROOT ($ANDROID_SDK_ROOT)" >&2
             exit 1
           fi
-          echo "Accepting licenses..."
           yes | "$SDKMANAGER" --sdk_root="${ANDROID_SDK_ROOT}" --licenses >/dev/null || true
-          echo "Installing required components: cmake;3.18.1, ndk;25.1.8937393, build-tools;33.0.1, platforms;android-33"
           "$SDKMANAGER" --sdk_root="${ANDROID_SDK_ROOT}" "cmake;3.18.1" "ndk;25.1.8937393" "build-tools;33.0.1" "platforms;android-33"
 
-      - name: Ensure gradle wrapper JAR & gradlew script are usable
+      - name: Ensure gradlew & wrapper jar usable (permissions & EOL)
         run: |
-          echo "=== listing wrapper folders ==="
+          echo "Checking gradle wrapper files..."
           ls -la gradle || true
           ls -la gradle/wrapper || true
 
           if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Found gradle-wrapper.jar — fixing permissions"
+            echo "Fixing gradle-wrapper.jar perms (readable)"
             chmod a+r gradle/wrapper/gradle-wrapper.jar || true
-            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradle/wrapper/gradle-wrapper.jar || true
           else
-            echo "::warning::gradle-wrapper.jar NOT FOUND at gradle/wrapper/gradle-wrapper.jar"
+            echo "::warning:: gradle/wrapper/gradle-wrapper.jar not present"
           fi
 
           if [ -f gradlew ]; then
-            echo "Normalizing gradlew line endings and making executable"
+            echo "Normalizing gradlew line endings and chmod +x"
             if command -v dos2unix >/dev/null 2>&1; then
               dos2unix gradlew || true
             else
               sed -i 's/\r$//' gradlew || true
             fi
             chmod +x gradlew || true
-            stat -c 'mode=%a uid=%u gid=%g size=%s %n' gradlew || true
-          else
-            echo "::warning::gradlew script not found"
           fi
 
-      - name: Setup Gradle (system fallback)
+      - name: Setup Gradle (system)
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.5'
 
-      - name: Build owner & user debug APKs (direct java wrapper invocation)
+      - name: Build owner & user debug APKs (try wrapper, fallback to system gradle)
+        shell: bash
         run: |
           set -euo pipefail
-          # Prefer running wrapper via java to avoid gradlew shell parsing issues
-          if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
-            if [ -n "${JAVA_HOME:-}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
-              JAVA_CMD="${JAVA_HOME}/bin/java"
-            else
-              JAVA_CMD="$(which java || true)"
-            fi
-            if [ -z "$JAVA_CMD" ]; then
-              echo "::error::Java not found"
-              exit 2
-            fi
-            echo "Using java: $JAVA_CMD (direct wrapper jar invocation)"
 
-            echo ">>> Running :app:assembleUserDebug"
-            "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain :app:assembleUserDebug --no-daemon || { echo "::error::assembleUserDebug failed"; exit 1; }
-
-            echo ">>> Running :app:assembleOwnerDebug"
-            "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain :app:assembleOwnerDebug --no-daemon || { echo "::error::assembleOwnerDebug failed"; exit 1; }
-
+          # helper to find java
+          if [ -n "${JAVA_HOME:-}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
+            JAVA_CMD="${JAVA_HOME}/bin/java"
           else
-            echo "::warning::gradle-wrapper.jar missing — falling back to system gradle (if available)"
+            JAVA_CMD="$(which java || true)"
+          fi
+
+          if [ -z "${JAVA_CMD}" ]; then
+            echo "::error::No java found; aborting"
+            exit 2
+          fi
+
+          echo "Using java: $JAVA_CMD"
+
+          WRAPPER_OK=0
+
+          if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "Testing gradle wrapper jar with --version..."
+            # run wrapper --version but don't fail the script if it fails — capture exit
+            if "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain --version > /tmp/wrapper-version.log 2>&1; then
+              echo "Wrapper --version succeeded"
+              WRAPPER_OK=1
+            else
+              echo "::warning:: gradle wrapper jar test failed, falling back to system gradle"
+              echo "wrapper log:"
+              tail -n +1 /tmp/wrapper-version.log || true
+              WRAPPER_OK=0
+            fi
+          else
+            echo "::warning:: gradle/wrapper/gradle-wrapper.jar not found; using system gradle"
+            WRAPPER_OK=0
+          fi
+
+          if [ "$WRAPPER_OK" -eq 1 ]; then
+            echo "Running assemble tasks via wrapper jar"
+            # run wrapper via java; if it fails, capture exit and fallback
+            if ! "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain :app:assembleUserDebug --no-daemon; then
+              echo "::warning:: assembleUserDebug via wrapper failed -> will fallback to system gradle"
+              WRAPPER_OK=0
+            fi
+            if [ "$WRAPPER_OK" -eq 1 ]; then
+              if ! "$JAVA_CMD" -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain :app:assembleOwnerDebug --no-daemon; then
+                echo "::warning:: assembleOwnerDebug via wrapper failed -> will fallback to system gradle"
+                WRAPPER_OK=0
+              fi
+            fi
+          fi
+
+          if [ "$WRAPPER_OK" -eq 0 ]; then
+            echo "Using system gradle (setup by setup-gradle action) as fallback"
             gradle :app:assembleUserDebug --no-daemon || { echo "::error::assembleUserDebug failed (system gradle)"; exit 1; }
             gradle :app:assembleOwnerDebug --no-daemon || { echo "::error::assembleOwnerDebug failed (system gradle)"; exit 1; }
           fi
