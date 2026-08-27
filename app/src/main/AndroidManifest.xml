@@ -18,9 +18,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Pikachu">
 
-        <!-- Main Activity -->
+        <!-- Main Activity - Fixed to point to correct package -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.Pikachu.owner.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
