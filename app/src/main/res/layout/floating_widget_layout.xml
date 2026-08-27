@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/floating_root"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:padding="8dp">
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:background="@android:color/holo_blue_dark">
 
+    <!-- Generic percentage text used by TradingAutomationService -->
     <TextView
         android:id="@+id/txtPercentage"
         android:layout_width="wrap_content"
@@ -11,7 +15,36 @@
         android:text="--%"
         android:textSize="14sp"
         android:textColor="@android:color/white"
-        android:background="@android:color/holo_blue_dark"
-        android:padding="6dp" />
+        android:padding="4dp" />
 
-</FrameLayout>
+    <!-- UP / DOWN / Candle texts used by OverlayDisplayService & TradeService -->
+    <TextView
+        android:id="@+id/txtUpPercent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="UP: --%"
+        android:textSize="13sp"
+        android:textColor="@android:color/white"
+        android:paddingTop="6dp"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/txtDownPercent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DOWN: --%"
+        android:textSize="13sp"
+        android:textColor="@android:color/white"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/txtCandlePercent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Candle: --%"
+        android:textSize="13sp"
+        android:textColor="@android:color/white"
+        android:paddingBottom="4dp"
+        android:padding="4dp" />
+
+</LinearLayout>
